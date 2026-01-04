@@ -1,0 +1,94 @@
+#unity-canvas {
+    cursor: none !important;
+}
+
+.loading-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 256px;
+    height: 256px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease-out;
+}
+
+.loading-container.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.favicon-center {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    z-index: 2;
+    border-radius: 4px;
+}
+
+.loading-text {
+    position: absolute;
+    bottom: -16px;
+    color: rgba(119, 85, 255, 0.8);
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    font-size: 24px;
+    font-weight: 500;
+    text-align: center;
+    animation: pulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+    from {
+        opacity: 0.6;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.loader {
+  width: 256px;
+  height: 256px;
+  display: block;
+  margin: 15px auto;
+  position: relative;
+  color: #FFF;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+}
+.loader::after,
+.loader::before {
+  content: '';  
+  box-sizing: border-box;
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  top: 50%;
+  left: 50%;
+  transform: scale(0.25) translate(0, 0);
+  background-color: #2acaff46;
+  border-radius: 50%;
+  animation: animloader 1s infinite ease-in-out;
+}
+.loader::before {
+  background-color: #ff84002f;
+  transform: scale(0.25) translate(-192px, -192px);
+}
+
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+} 
+@keyframes animloader {
+  50% {
+    transform: scale(1) translate(-50%, -50%);
+    background-color: rgba(163, 42, 255, 0.275);
+  }
+}

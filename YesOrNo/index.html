@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Yes or No</title>
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body style="margin: 0; padding: 0; background: linear-gradient(0deg, #090562 0%, #210241 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+    
+  <div id="loading-container" class="loading-container">
+      <img src="favicon.ico" alt="Loading" class="favicon-center" onerror="this.style.display='none'">
+      <div class="loader"></div>
+      <div class="loading-text">Loading</div>
+    </div>
+
+    <canvas id="unity-canvas" width=1920 height=1080 tabindex="-1" style="width: 1920px; height: 1080px; background: #1d0f4c; border-radius: 32px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);"></canvas>
+    <div id="fullscreen-button" style="position: fixed; top: 10px; right: 10px; background-color: rgba(0,0,0,0.5); color: rgba(255, 170, 234, 1.0); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-family: Arial, sans-serif; font-size: 14px; z-index: 1000;">
+      ⛶ Fullscreen
+    </div>
+    <script src="Build/Jan3_Release.loader.js"></script>
+    <script>
+      function hideLoadingAnimation() {
+        const container = document.getElementById('loading-container');
+        if (container) {
+          container.classList.add('hidden');
+          setTimeout(() => {
+            container.style.display = 'none';
+          }, 500);
+        }
+      }
+
+      function showErrorState() {
+        const loadingText = document.querySelector('.loading-text');
+        const loader = document.querySelector('.loader');
+        
+        if (loadingText) {
+          loadingText.innerHTML = 'Error!<br>Please refresh';
+          loadingText.style.color = '#ff6b6b';
+        }
+        
+        if (loader) {
+          loader.style.display = 'none';
+        }
+      }
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Mobile device style: fill the whole browser client area with the game canvas:
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+
+        var canvas = document.querySelector("#unity-canvas");
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        canvas.style.position = "fixed";
+
+        document.body.style.textAlign = "left";
+      }
+
+      createUnityInstance(document.querySelector("#unity-canvas"), {
+        arguments: [],
+        dataUrl: "Build/Jan3_Release.data.br",
+        frameworkUrl: "Build/Jan3_Release.framework.js.br",
+        codeUrl: "Build/Jan3_Release.wasm.br",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "RayOfGames",
+        productName: "Yes or No",
+        productVersion: "1.0",
+        // matchWebGLToCanvasSize: false, // Uncomment this to separately control WebGL canvas render size and DOM element size.
+        // devicePixelRatio: 1, // Uncomment this to override low DPI rendering on high DPI displays.
+      }).then((unityInstance) => {
+        hideLoadingAnimation();
+        document.querySelector("#fullscreen-button").onclick = () => {
+          unityInstance.SetFullscreen(1);
+        };
+      }).catch((error) => {
+        console.error('Unity loading failed:', error);
+        showErrorState();
+      });
+    </script>
+  </body>
+</html>
