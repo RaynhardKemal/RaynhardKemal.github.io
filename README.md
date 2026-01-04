@@ -1,2 +1,1 @@
-# RaynhardKemal.github.io
-visit: https://raynhardkemal.github.io/
+# Welcome to My Page
