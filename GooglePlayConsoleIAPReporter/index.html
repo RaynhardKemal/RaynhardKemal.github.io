@@ -1,0 +1,1788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Play Console IAP Report Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .controls {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        select {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e7f3ff;
+            border-radius: 6px;
+            color: #0066cc;
+        }
+
+        .reports-container {
+            margin-top: 30px;
+        }
+
+        .report-section {
+            margin-bottom: 40px;
+            page-break-inside: avoid;
+        }
+
+        .report-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .report-table-wrapper {
+            max-height: 450px;
+            overflow-y: auto;
+            overflow-x: auto;
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .report-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 0;
+            box-shadow: none;
+        }
+
+        .report-grid th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .report-grid td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .report-grid tr:hover {
+            background: #f8f9fa;
+        }
+
+        .report-grid tr:last-child td {
+            border-bottom: none;
+        }
+
+        .chart-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            height: 400px;
+        }
+
+        .report-action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .report-action-buttons #createReportBtn {
+            flex: 7;
+        }
+
+        .report-action-buttons #exportPDFBtn {
+            flex: 3;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .success {
+            color: #155724;
+            padding: 10px;
+            background: #d4edda;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+            }
+            .controls, .file-info, .error, .success {
+                display: none !important;
+            }
+            .report-section {
+                page-break-inside: avoid;
+                margin-bottom: 30px;
+            }
+            .chart-container {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 id="appTitle" data-translate="appTitle">Google Play Console IAP Report Generator</h1>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="languageSelect" style="margin: 0;">Language:</label>
+                <select id="languageSelect" onchange="changeLanguage(this.value)" style="padding: 5px 10px; border: 2px solid #ddd; border-radius: 6px;">
+                    <option value="EN">EN</option>
+                    <option value="JP">JP</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()" data-translate="selectFile">Select File (CSV or ZIP)</button>
+                    <input type="file" id="fileInput" accept=".csv,.zip" class="hidden">
+                    <div id="fileInfo" class="file-info hidden"></div>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start;">
+                    <button type="button" class="btn btn-secondary" onclick="exportSettings()" data-translate="exportSettings">Export Settings</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('importSettingsInput').click()" data-translate="importSettings">Import Settings</button>
+                    <button type="button" class="btn btn-secondary" onclick="clearSavedData()" style="background: #dc3545;" data-translate="clearSavedData">Clear Saved Data</button>
+                    <input type="file" id="importSettingsInput" accept=".json" class="hidden" onchange="importSettings(event)">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end;">
+                <div>
+                    <label for="packageSelect" data-translate="filterPackageID">Filter PackageID:</label>
+                    <select id="packageSelect">
+                        <option value="" data-translate="allPackages">All Packages</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="countrySelect" data-translate="filterCountry">Filter Country:</label>
+                    <select id="countrySelect">
+                        <option value="" data-translate="allCountries">All Countries</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <label style="margin: 0;" data-translate="displayCurrency">Display Currency:</label>
+                <div style="display: flex; gap: 20px;">
+                    <div class="checkbox-item">
+                        <input type="radio" id="currencyJPY" name="currency" value="JPY" checked>
+                        <label for="currencyJPY" data-translate="currencyJPY">JPY (Yen)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="radio" id="currencyUSD" name="currency" value="USD">
+                        <label for="currencyUSD" data-translate="currencyUSD">USD (Dollar)</label>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label for="productDefinition" data-translate="productDefinition">Product Definition:</label>
+                <select id="productDefinition" style="padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; width: 100%; max-width: 400px;">
+                    <option value="skuId" data-translate="skuId">Sku Id</option>
+                    <option value="productTitle" data-translate="productTitle">Product Title</option>
+                </select>
+            </div>
+
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="topRevenue" checked>
+                    <label for="topRevenue" data-translate="topRevenue">Top Revenue Products</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="topBought" checked>
+                    <label for="topBought" data-translate="topBought">Top Bought Products</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="revenueByPrice" checked>
+                    <label for="revenueByPrice" data-translate="revenueByPrice">Revenue by Price</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="revenueByCountry">
+                    <label for="revenueByCountry" data-translate="revenueByCountry">Revenue by Country</label>
+                </div>
+            </div>
+
+            <div class="report-action-buttons">
+                <button class="btn btn-success" id="createReportBtn" onclick="generateReport()" data-translate="createReport">Create Report</button>
+                <button class="btn btn-secondary hidden" id="exportPDFBtn" onclick="exportToPDF()" data-translate="exportPDF">Export as PDF</button>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error hidden"></div>
+        <div id="successMessage" class="success hidden"></div>
+
+        <div id="reportsContainer" class="reports-container hidden">
+        </div>
+    </div>
+
+    <script>
+        let csvData = [];
+        let filteredData = [];
+        let charts = [];
+        let merchantCurrency = 'USD'; // Default currency
+        let conversionRate = 1; // Conversion rate from JPY to USD
+        let translations = {};
+        let currentLanguage = 'EN';
+
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+        
+        // Regenerate report when currency changes
+        document.querySelectorAll('input[name="currency"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                saveSettings();
+                if (csvData.length > 0 && document.getElementById('reportsContainer').classList.contains('hidden') === false) {
+                    generateReport();
+                }
+            });
+        });
+
+        // Save settings when package ID changes
+        document.getElementById('packageSelect').addEventListener('change', saveSettings);
+
+        // Save settings when country changes and manage Revenue by Country availability
+        document.getElementById('countrySelect').addEventListener('change', function() {
+            saveSettings();
+            // Enable/disable Revenue by Country based on country filter
+            const countrySelect = document.getElementById('countrySelect');
+            const revenueByCountryCheckbox = document.getElementById('revenueByCountry');
+            const revenueByCountryLabel = revenueByCountryCheckbox.nextElementSibling;
+            
+            if (countrySelect.value === '') {
+                // All countries selected - enable the checkbox
+                revenueByCountryCheckbox.disabled = false;
+                revenueByCountryLabel.style.opacity = '1';
+                revenueByCountryLabel.style.cursor = 'pointer';
+            } else {
+                // Specific country selected - disable and uncheck
+                revenueByCountryCheckbox.disabled = true;
+                revenueByCountryCheckbox.checked = false;
+                revenueByCountryLabel.style.opacity = '0.5';
+                revenueByCountryLabel.style.cursor = 'not-allowed';
+            }
+        });
+
+        // Save settings when report checkboxes change
+        document.getElementById('topRevenue').addEventListener('change', saveSettings);
+        document.getElementById('topBought').addEventListener('change', saveSettings);
+        document.getElementById('revenueByPrice').addEventListener('change', saveSettings);
+        document.getElementById('revenueByCountry').addEventListener('change', saveSettings);
+
+        // Save settings when product definition changes
+        document.getElementById('productDefinition').addEventListener('change', function() {
+            saveSettings();
+            // Regenerate report if data is loaded
+            if (csvData.length > 0 && document.getElementById('reportsContainer').classList.contains('hidden') === false) {
+                generateReport();
+            }
+        });
+
+        // Load settings and file on page load
+        window.addEventListener('DOMContentLoaded', async function() {
+            // Load saved language preference first
+            const savedLanguage = localStorage.getItem('playStoreIAPReporterLanguage');
+            if (savedLanguage) {
+                currentLanguage = savedLanguage;
+            }
+            
+            // Load language file first
+            await loadLanguageFile();
+            
+            // Apply translations immediately after loading
+            applyTranslations();
+            
+            // Then load other settings
+            loadSettings();
+            autoLoadFile();
+            
+            // Apply translations again in case new elements were added
+            setTimeout(() => applyTranslations(), 100);
+        });
+
+        async function loadLanguageFile() {
+            try {
+                const response = await fetch('language.csv');
+                if (!response.ok) {
+                    console.warn('Could not load language.csv file, using fallback');
+                    loadFallbackTranslations();
+                    return;
+                }
+                const csvText = await response.text();
+                const lines = csvText.split('\n').filter(line => line.trim());
+                if (lines.length < 2) {
+                    console.warn('Language file has insufficient lines, using fallback');
+                    loadFallbackTranslations();
+                    return;
+                }
+                
+                // Parse header using parseCSVLine for consistency
+                const headerValues = parseCSVLine(lines[0]);
+                const enIndex = headerValues.indexOf('EN');
+                const jpIndex = headerValues.indexOf('JP');
+                
+                if (enIndex === -1 || jpIndex === -1) {
+                    console.warn('Could not find EN or JP columns in language file, using fallback');
+                    loadFallbackTranslations();
+                    return;
+                }
+                
+                translations = {};
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue; // Skip empty lines
+                    const values = parseCSVLine(lines[i]);
+                    if (values.length > 0 && values[0]) {
+                        const key = values[0].trim();
+                        if (key) {
+                            translations[key] = {
+                                EN: values[enIndex] ? values[enIndex].trim() : key,
+                                JP: values[jpIndex] ? values[jpIndex].trim() : key
+                            };
+                        }
+                    }
+                }
+                console.log('Translations loaded:', Object.keys(translations).length, 'keys');
+            } catch (e) {
+                console.warn('Could not load language file:', e, '- using fallback');
+                loadFallbackTranslations();
+            }
+        }
+
+        function loadFallbackTranslations() {
+            // Fallback translations embedded in code
+            translations = {
+                appTitle: { EN: 'Google Play Console IAP Report Generator', JP: 'Google Play Console IAPレポート生成ツール' },
+                selectFile: { EN: 'Select File (CSV or ZIP)', JP: 'ファイルを選択 (CSVまたはZIP)' },
+                filterPackageID: { EN: 'Filter PackageID:', JP: 'パッケージIDでフィルター:' },
+                allPackages: { EN: 'All Packages', JP: 'すべてのパッケージ' },
+                filterCountry: { EN: 'Filter Country:', JP: '国でフィルター:' },
+                allCountries: { EN: 'All Countries', JP: 'すべての国' },
+                displayCurrency: { EN: 'Display Currency:', JP: '表示通貨:' },
+                currencyJPY: { EN: 'JPY (Yen)', JP: 'JPY (円)' },
+                currencyUSD: { EN: 'USD (Dollar)', JP: 'USD (ドル)' },
+                topRevenue: { EN: 'Top Revenue Products', JP: '収益トップ製品' },
+                topBought: { EN: 'Top Bought Products', JP: '購入数トップ製品' },
+                revenueByPrice: { EN: 'Revenue by Price', JP: '価格別収益' },
+                revenueByCountry: { EN: 'Revenue by Country', JP: '国別収益' },
+                averagePurchase: { EN: 'Average Purchase', JP: '平均購入額' },
+                medianPurchase: { EN: 'Median Purchase', JP: '中央値購入額' },
+                totalPurchaseCount: { EN: 'Total Purchase Count', JP: '総購入数' },
+                createReport: { EN: 'Create Report', JP: 'レポートを作成' },
+                exportSettings: { EN: 'Export Settings', JP: '設定をエクスポート' },
+                importSettings: { EN: 'Import Settings', JP: '設定をインポート' },
+                clearSavedData: { EN: 'Clear Saved Data', JP: '保存データをクリア' },
+                fileLoaded: { EN: 'File loaded:', JP: 'ファイル読み込み:' },
+                transactions: { EN: 'transactions', JP: 'トランザクション' },
+                autoLoaded: { EN: '[Auto-loaded]', JP: '[自動読み込み]' },
+                exportPDF: { EN: 'Export as PDF', JP: 'PDFとしてエクスポート' },
+                print: { EN: 'Print', JP: '印刷' },
+                product: { EN: 'Product', JP: '製品' },
+                price: { EN: 'Price', JP: '価格' },
+                revenue: { EN: 'Revenue', JP: '収益' },
+                revenuePercentage: { EN: 'Revenue Percentage', JP: '収益割合' },
+                count: { EN: 'Count', JP: '購入数' },
+                countPercentage: { EN: 'Count Percentage', JP: '購入数割合' },
+                products: { EN: 'Products', JP: '製品一覧' },
+                pleaseSelectFile: { EN: 'Please select a CSV or ZIP file first', JP: 'まずCSVまたはZIPファイルを選択してください' },
+                noValidData: { EN: 'No valid transaction data found', JP: '有効なトランザクションデータが見つかりません' },
+                reportGenerated: { EN: 'Report generated successfully', JP: 'レポートが正常に生成されました' },
+                fileLoadSuccess: { EN: 'File loaded successfully', JP: 'ファイルが正常に読み込まれました' },
+                errorLoadingFile: { EN: 'Error loading file:', JP: 'ファイルの読み込みエラー:' },
+                noDataFound: { EN: 'No data found in CSV file', JP: 'CSVファイルにデータが見つかりません' },
+                noCSVInZip: { EN: 'No CSV file found in ZIP archive', JP: 'ZIPアーカイブにCSVファイルが見つかりません' },
+                settingsImported: { EN: 'Settings imported successfully', JP: '設定が正常にインポートされました' },
+                dataCleared: { EN: 'Saved data cleared successfully', JP: '保存データが正常にクリアされました' },
+                confirmClear: { EN: 'Are you sure you want to clear all saved data? This will remove the saved file and settings.', JP: '保存されたすべてのデータをクリアしてもよろしいですか？これにより、保存されたファイルと設定が削除されます。' },
+                productDefinition: { EN: 'Product Definition:', JP: '製品定義:' },
+                skuId: { EN: 'Sku Id', JP: 'Sku ID' },
+                productTitle: { EN: 'Product Title', JP: '製品タイトル' },
+                priceRange: { EN: 'Price Range', JP: '価格範囲' }
+            };
+        }
+
+        function t(key) {
+            if (translations[key] && translations[key][currentLanguage]) {
+                return translations[key][currentLanguage];
+            }
+            return key;
+        }
+
+        function changeLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('playStoreIAPReporterLanguage', lang);
+            applyTranslations();
+        }
+
+        function applyTranslations() {
+            // Check if translations are loaded
+            if (!translations || Object.keys(translations).length === 0) {
+                console.warn('Translations not loaded yet');
+                return;
+            }
+            
+            // Update app title
+            const appTitleEl = document.getElementById('appTitle');
+            if (appTitleEl) {
+                appTitleEl.textContent = t('appTitle');
+            }
+            
+            // Update all elements with data-translate attribute
+            document.querySelectorAll('[data-translate]').forEach(element => {
+                const key = element.getAttribute('data-translate');
+                if (!key) return;
+                
+                const translated = t(key);
+                if (element.tagName === 'INPUT' && (element.type === 'button' || element.type === 'submit')) {
+                    element.value = translated;
+                } else if (element.tagName === 'OPTION') {
+                    element.textContent = translated;
+                } else if (element.tagName === 'BUTTON') {
+                    element.textContent = translated;
+                } else {
+                    element.textContent = translated;
+                }
+            });
+            
+            // Update language selector
+            const langSelect = document.getElementById('languageSelect');
+            if (langSelect) {
+                langSelect.value = currentLanguage;
+            }
+        }
+
+        async function autoLoadFile() {
+            try {
+                const savedContent = localStorage.getItem('playStoreIAPReporterFileContent');
+                const savedFileName = localStorage.getItem('playStoreIAPReporterFileName');
+                
+                if (savedContent && savedFileName) {
+                    // Parse the CSV content
+                    csvData = parseCSV(savedContent);
+                    
+                    if (csvData.length === 0) {
+                        return; // No valid data
+                    }
+
+                    // Populate package ID dropdown
+                    const packageIds = [...new Set(csvData.map(row => row['Package ID']).filter(Boolean))];
+                    const packageSelect = document.getElementById('packageSelect');
+                    const allPackagesOption = document.createElement('option');
+                    allPackagesOption.value = '';
+                    allPackagesOption.setAttribute('data-translate', 'allPackages');
+                    allPackagesOption.textContent = t('allPackages');
+                    packageSelect.innerHTML = '';
+                    packageSelect.appendChild(allPackagesOption);
+                    packageIds.forEach(pkgId => {
+                        const option = document.createElement('option');
+                        option.value = pkgId;
+                        option.textContent = pkgId;
+                        packageSelect.appendChild(option);
+                    });
+
+                    // Populate country dropdown
+                    const countries = [...new Set(csvData.map(row => row['Buyer Country']).filter(Boolean))].sort();
+                    const countrySelect = document.getElementById('countrySelect');
+                    const allCountriesOption = document.createElement('option');
+                    allCountriesOption.value = '';
+                    allCountriesOption.setAttribute('data-translate', 'allCountries');
+                    allCountriesOption.textContent = t('allCountries');
+                    countrySelect.innerHTML = '';
+                    countrySelect.appendChild(allCountriesOption);
+                    countries.forEach(country => {
+                        const option = document.createElement('option');
+                        option.value = country;
+                        option.textContent = country;
+                        countrySelect.appendChild(option);
+                    });
+                    applyTranslations();
+
+                    // Load saved settings (package ID, etc.)
+                    loadSettings();
+
+                    // Update UI
+                    document.getElementById('fileInfo').textContent = `${t('fileLoaded')} ${savedFileName} (${csvData.length} ${t('transactions')}) ${t('autoLoaded')}`;
+                    document.getElementById('fileInfo').classList.remove('hidden');
+                    showSuccess(t('fileLoadSuccess'));
+                }
+            } catch (e) {
+                console.warn('Could not auto-load file:', e);
+            }
+        }
+
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                let csvContent = '';
+                
+                if (file.name.endsWith('.zip')) {
+                    const zip = new JSZip();
+                    const zipData = await file.arrayBuffer();
+                    const zipContents = await zip.loadAsync(zipData);
+                    
+                    const csvFile = Object.keys(zipContents.files).find(name => name.endsWith('.csv'));
+                    if (!csvFile) {
+                        showError('noCSVInZip');
+                        return;
+                    }
+                    
+                    csvContent = await zipContents.files[csvFile].async('string');
+                } else {
+                    csvContent = await file.text();
+                }
+
+                csvData = parseCSV(csvContent);
+                
+                if (csvData.length === 0) {
+                    showError('noDataFound');
+                    return;
+                }
+
+                // Save file content to localStorage for auto-reload
+                try {
+                    localStorage.setItem('playStoreIAPReporterFileContent', csvContent);
+                    localStorage.setItem('playStoreIAPReporterFileName', file.name);
+                } catch (e) {
+                    console.warn('Could not save file content to localStorage (file may be too large):', e);
+                }
+
+                // Populate package ID dropdown
+                const packageIds = [...new Set(csvData.map(row => row['Package ID']).filter(Boolean))];
+                const packageSelect = document.getElementById('packageSelect');
+                const allPackagesOption = document.createElement('option');
+                allPackagesOption.value = '';
+                allPackagesOption.setAttribute('data-translate', 'allPackages');
+                allPackagesOption.textContent = t('allPackages');
+                packageSelect.innerHTML = '';
+                packageSelect.appendChild(allPackagesOption);
+                packageIds.forEach(pkgId => {
+                    const option = document.createElement('option');
+                    option.value = pkgId;
+                    option.textContent = pkgId;
+                    packageSelect.appendChild(option);
+                });
+
+                // Populate country dropdown
+                const countries = [...new Set(csvData.map(row => row['Buyer Country']).filter(Boolean))].sort();
+                const countrySelect = document.getElementById('countrySelect');
+                const allCountriesOption = document.createElement('option');
+                allCountriesOption.value = '';
+                allCountriesOption.setAttribute('data-translate', 'allCountries');
+                allCountriesOption.textContent = t('allCountries');
+                countrySelect.innerHTML = '';
+                countrySelect.appendChild(allCountriesOption);
+                countries.forEach(country => {
+                    const option = document.createElement('option');
+                    option.value = country;
+                    option.textContent = country;
+                    countrySelect.appendChild(option);
+                });
+                applyTranslations();
+
+                // Load saved settings after package dropdown is populated
+                loadSettings();
+
+                document.getElementById('fileInfo').textContent = `${t('fileLoaded')} ${file.name} (${csvData.length} ${t('transactions')})`;
+                document.getElementById('fileInfo').classList.remove('hidden');
+                showSuccess(t('fileLoadSuccess'));
+                
+                // Save settings after file load
+                saveSettings();
+            } catch (error) {
+                showError('errorLoadingFile', error.message);
+            }
+        }
+
+        function parseCSV(csvContent) {
+            const lines = csvContent.split('\n').filter(line => line.trim());
+            if (lines.length < 2) return [];
+
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCSVLine(lines[i]);
+                if (values.length !== headers.length) continue;
+
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                data.push(row);
+            }
+
+            return data;
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            
+            return result;
+        }
+
+        function showError(messageKey, ...args) {
+            const errorDiv = document.getElementById('errorMessage');
+            let message = t(messageKey);
+            // Replace placeholders if any
+            args.forEach((arg, index) => {
+                message = message.replace(`{${index}}`, arg);
+            });
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            document.getElementById('successMessage').classList.add('hidden');
+        }
+
+        function showSuccess(messageKey, ...args) {
+            const successDiv = document.getElementById('successMessage');
+            let message = t(messageKey);
+            // Replace placeholders if any
+            args.forEach((arg, index) => {
+                message = message.replace(`{${index}}`, arg);
+            });
+            successDiv.textContent = message;
+            successDiv.classList.remove('hidden');
+            document.getElementById('errorMessage').classList.add('hidden');
+        }
+
+        function cleanProductTitle(title) {
+            if (!title) return 'Unknown';
+            // Remove app name in parentheses at the end (e.g., "My Product (My App Name)" -> "My Product")
+            return title.replace(/\s*\([^)]*\)\s*$/, '').trim();
+        }
+
+        function getSkuSuffix(skuId) {
+            if (!skuId) return '';
+            const parts = skuId.split('.');
+            if (parts.length > 1) {
+                return parts[parts.length - 1];
+            }
+            return '';
+        }
+
+        function formatProductDisplayName(productName, skuId, allProducts) {
+            // Check if there are other products with the same name but different Sku Ids
+            const sameNameProducts = allProducts.filter(p => 
+                p.productName === productName && p.skuId !== skuId
+            );
+            
+            if (sameNameProducts.length === 0) {
+                return productName;
+            }
+            
+            // Get all Sku Ids for products with the same name
+            const allSkuIds = [skuId, ...sameNameProducts.map(p => p.skuId)].filter(Boolean);
+            
+            // Find the longest Sku Id
+            const longestSkuId = allSkuIds.reduce((a, b) => a.length > b.length ? a : b);
+            
+            // If this product has the longest Sku Id, add suffix
+            if (skuId === longestSkuId) {
+                const suffix = getSkuSuffix(skuId);
+                if (suffix) {
+                    return `${productName} (${suffix})`;
+                }
+            }
+            
+            return productName;
+        }
+
+        async function generateReport() {
+            // Get Export as PDF button reference
+            const exportPDFBtn = document.getElementById('exportPDFBtn');
+            
+            if (csvData.length === 0) {
+                showError('pleaseSelectFile');
+                return;
+            }
+
+            // Clear previous charts
+            charts.forEach(chart => chart.destroy());
+            charts = [];
+
+            // Filter by package ID
+            const selectedPackage = document.getElementById('packageSelect').value;
+            filteredData = selectedPackage 
+                ? csvData.filter(row => row['Package ID'] === selectedPackage)
+                : csvData;
+
+            // Filter by country
+            const selectedCountry = document.getElementById('countrySelect').value;
+            filteredData = selectedCountry 
+                ? filteredData.filter(row => row['Buyer Country'] === selectedCountry)
+                : filteredData;
+
+            // Filter only Charge transactions (exclude Google fee)
+            filteredData = filteredData.filter(row => 
+                row['Transaction Type'] === 'Charge' && 
+                parseFloat(row['Amount (Merchant Currency)'] || 0) > 0
+            );
+
+            if (filteredData.length === 0) {
+                showError('noValidData');
+                return;
+            }
+
+            // Detect merchant currency from data
+            const currencies = filteredData.map(row => row['Merchant Currency']).filter(Boolean);
+            if (currencies.length > 0) {
+                merchantCurrency = currencies[0]; // Use first currency found
+            }
+
+            // Extract conversion rate from CSV (find most recent USD->JPY transaction)
+            // The conversion rate converts buyer currency to merchant currency
+            // So if buyer is USD and merchant is JPY, rate converts USD to JPY
+            // To convert JPY to USD, we need 1/rate
+            const usdToJpyTransactions = csvData.filter(row => 
+                row['Buyer Currency'] === 'USD' && 
+                row['Merchant Currency'] === 'JPY' &&
+                row['Currency Conversion Rate']
+            );
+            
+            if (usdToJpyTransactions.length > 0) {
+                // Get the most recent transaction (assuming CSV is sorted by date, or use last one)
+                const lastTransaction = usdToJpyTransactions[usdToJpyTransactions.length - 1];
+                const rate = parseFloat(lastTransaction['Currency Conversion Rate'] || 1);
+                if (rate > 0) {
+                    conversionRate = 1 / rate; // Convert JPY to USD
+                }
+            } else if (merchantCurrency === 'JPY') {
+                // If no conversion rate in CSV, try to fetch current rate from API
+                try {
+                    const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                    const data = await response.json();
+                    if (data.rates && data.rates.JPY) {
+                        conversionRate = 1 / data.rates.JPY; // Convert JPY to USD
+                    }
+                } catch (e) {
+                    // If API fails, use a default rate (approximate)
+                    console.warn('Could not fetch exchange rate, using default');
+                    conversionRate = 1 / 150; // Approximate fallback rate
+                }
+            }
+
+            // Hide Export as PDF button at the start
+            if (exportPDFBtn) {
+                exportPDFBtn.classList.add('hidden');
+            }
+
+            const reportsContainer = document.getElementById('reportsContainer');
+            reportsContainer.innerHTML = '';
+
+            // Calculate total revenue
+            const totalRevenue = filteredData.reduce((sum, row) => {
+                return sum + parseFloat(row['Amount (Merchant Currency)'] || 0);
+            }, 0);
+            const revenueAfterCut = totalRevenue * 0.7;
+            
+            // Calculate total purchase count
+            const totalPurchaseCount = filteredData.length;
+
+            // Add revenue summary at the top
+            const revenueSummary = document.createElement('div');
+            revenueSummary.style.cssText = 'font-size: 1.2em; font-weight: 600; color: #333; margin-bottom: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;';
+            revenueSummary.innerHTML = `
+                <div>${t('revenue')}: ${formatCurrency(totalRevenue)} (after 30% cut: ${formatCurrency(revenueAfterCut)})</div>
+                <div style="margin-top: 10px;">${t('totalPurchaseCount')}: ${totalPurchaseCount.toLocaleString()}</div>
+            `;
+            reportsContainer.appendChild(revenueSummary);
+
+            // Generate selected reports
+            if (document.getElementById('topRevenue').checked) {
+                generateTopRevenueReport();
+            }
+            if (document.getElementById('topBought').checked) {
+                generateTopBoughtReport();
+            }
+            if (document.getElementById('revenueByPrice').checked) {
+                generateRevenueByPriceReport();
+            }
+            if (document.getElementById('revenueByCountry').checked && document.getElementById('countrySelect').value === '') {
+                generateRevenueByCountryReport();
+            }
+
+            reportsContainer.classList.remove('hidden');
+            
+            // Show Export as PDF button after successful report generation
+            if (exportPDFBtn) {
+                exportPDFBtn.classList.remove('hidden');
+            }
+            
+            showSuccess('reportGenerated');
+        }
+
+        function generateTopRevenueReport() {
+            const productDefinition = document.getElementById('productDefinition').value;
+            const productStats = {};
+            
+            filteredData.forEach(row => {
+                const skuId = row['Sku Id'] || '';
+                const productName = cleanProductTitle(row['Product Title']);
+                const amount = parseFloat(row['Amount (Merchant Currency)'] || 0);
+                
+                // Determine product key based on setting
+                const productKey = productDefinition === 'productTitle' ? productName : (skuId || productName);
+                
+                if (!productStats[productKey]) {
+                    productStats[productKey] = { 
+                        revenue: 0, 
+                        count: 0, 
+                        prices: [],
+                        productName: productName,
+                        skuId: skuId
+                    };
+                }
+                productStats[productKey].revenue += amount;
+                productStats[productKey].count += 1;
+                productStats[productKey].prices.push(amount);
+            });
+
+            // Convert to array and format display names
+            const allProducts = Object.values(productStats);
+            const sortedProducts = allProducts
+                .map(stats => {
+                    // Get unique prices and find cheapest
+                    const uniquePrices = [...new Set(stats.prices)].sort((a, b) => a - b);
+                    const cheapestPrice = uniquePrices[0];
+                    const otherPrices = uniquePrices.slice(1);
+                    
+                    return {
+                        productName: stats.productName,
+                        skuId: stats.skuId,
+                        revenue: stats.revenue,
+                        count: stats.count,
+                        price: cheapestPrice,
+                        otherPrices: otherPrices
+                    };
+                })
+                .map(p => ({
+                    ...p,
+                    product: productDefinition === 'productTitle' 
+                        ? p.productName 
+                        : formatProductDisplayName(p.productName, p.skuId, allProducts)
+                }))
+                .sort((a, b) => b.revenue - a.revenue);
+
+            const totalRevenue = sortedProducts.reduce((sum, p) => sum + p.revenue, 0);
+            const totalCount = sortedProducts.reduce((sum, p) => sum + p.count, 0);
+
+            createReportSection(t('topRevenue'), sortedProducts, totalRevenue, 'revenue', totalCount, false, false, productDefinition === 'productTitle');
+        }
+
+        function generateTopBoughtReport() {
+            const productDefinition = document.getElementById('productDefinition').value;
+            const productStats = {};
+            
+            filteredData.forEach(row => {
+                const skuId = row['Sku Id'] || '';
+                const productName = cleanProductTitle(row['Product Title']);
+                const amount = parseFloat(row['Amount (Merchant Currency)'] || 0);
+                
+                // Determine product key based on setting
+                const productKey = productDefinition === 'productTitle' ? productName : (skuId || productName);
+                
+                if (!productStats[productKey]) {
+                    productStats[productKey] = { 
+                        revenue: 0, 
+                        count: 0, 
+                        prices: [],
+                        productName: productName,
+                        skuId: skuId
+                    };
+                }
+                productStats[productKey].revenue += amount;
+                productStats[productKey].count += 1;
+                productStats[productKey].prices.push(amount);
+            });
+
+            // Convert to array and format display names
+            const allProducts = Object.values(productStats);
+            const sortedProducts = allProducts
+                .map(stats => {
+                    // Get unique prices and find cheapest
+                    const uniquePrices = [...new Set(stats.prices)].sort((a, b) => a - b);
+                    const cheapestPrice = uniquePrices[0];
+                    const otherPrices = uniquePrices.slice(1);
+                    
+                    return {
+                        productName: stats.productName,
+                        skuId: stats.skuId,
+                        revenue: stats.revenue,
+                        count: stats.count,
+                        price: cheapestPrice,
+                        otherPrices: otherPrices
+                    };
+                })
+                .map(p => ({
+                    ...p,
+                    product: productDefinition === 'productTitle' 
+                        ? p.productName 
+                        : formatProductDisplayName(p.productName, p.skuId, allProducts)
+                }))
+                .sort((a, b) => b.count - a.count);
+
+            const totalCount = sortedProducts.reduce((sum, p) => sum + p.count, 0);
+            const totalRevenue = sortedProducts.reduce((sum, p) => sum + p.revenue, 0);
+
+            createReportSection(t('topBought'), sortedProducts, totalRevenue, 'count', totalCount, false, false, productDefinition === 'productTitle');
+        }
+
+        function generateRevenueByPriceReport() {
+            const productDefinition = document.getElementById('productDefinition').value;
+            // First, group by product to get each product's price
+            const productStats = {};
+            
+            filteredData.forEach(row => {
+                const skuId = row['Sku Id'] || '';
+                const productName = cleanProductTitle(row['Product Title']);
+                const amount = parseFloat(row['Amount (Merchant Currency)'] || 0);
+                if (amount <= 0) return;
+                
+                // Determine product key based on setting
+                const productKey = productDefinition === 'productTitle' ? productName : (skuId || productName);
+                
+                if (!productStats[productKey]) {
+                    productStats[productKey] = { 
+                        revenue: 0, 
+                        count: 0, 
+                        prices: [],
+                        productName: productName,
+                        skuId: skuId
+                    };
+                }
+                productStats[productKey].revenue += amount;
+                productStats[productKey].count += 1;
+                productStats[productKey].prices.push(amount);
+            });
+
+            // Calculate lowest price per product (same logic as other reports)
+            Object.keys(productStats).forEach(productKey => {
+                const stats = productStats[productKey];
+                // Get unique prices and find cheapest (same as Top Revenue/Top Bought reports)
+                const uniquePrices = [...new Set(stats.prices)].sort((a, b) => a - b);
+                const lowestPrice = uniquePrices[0];
+                stats.price = lowestPrice;
+            });
+
+            // Format product display names
+            const allProducts = Object.values(productStats);
+            const formattedProducts = allProducts.map(stats => {
+                const displayName = productDefinition === 'productTitle' 
+                    ? stats.productName 
+                    : formatProductDisplayName(stats.productName, stats.skuId, allProducts);
+                return {
+                    ...stats,
+                    displayName: displayName
+                };
+            });
+
+            // Now group products by their price using threshold-based grouping
+            const priceStats = {};
+            const threshold = merchantCurrency === 'JPY' ? 51 : 0.51;
+            
+            formattedProducts.forEach(stats => {
+                // Round down to nearest threshold boundary for grouping
+                // For JPY: round down to nearest multiple of 51 (e.g., 500-550 -> 500, 551-601 -> 551)
+                // For USD: round down to nearest multiple of 0.51 (e.g., 1.00-1.50 -> 1.00, 1.51-2.01 -> 1.51)
+                let priceKey;
+                
+                if (merchantCurrency === 'JPY') {
+                    // Round down to nearest multiple of 51
+                    const roundedDown = Math.floor(stats.price / threshold) * threshold;
+                    priceKey = roundedDown.toString();
+                } else {
+                    // Round down to nearest multiple of 0.51
+                    const roundedDown = Math.floor(stats.price / threshold) * threshold;
+                    priceKey = roundedDown.toFixed(2);
+                }
+                
+                if (!priceStats[priceKey]) {
+                    priceStats[priceKey] = { 
+                        revenue: 0, 
+                        count: 0, 
+                        minPrice: stats.price, // Track the actual minimum lowest price in this group
+                        products: []
+                    };
+                }
+                // Update minimum price if this product has a lower lowest price
+                if (stats.price < priceStats[priceKey].minPrice) {
+                    priceStats[priceKey].minPrice = stats.price;
+                }
+                priceStats[priceKey].revenue += stats.revenue;
+                priceStats[priceKey].count += stats.count;
+                priceStats[priceKey].products.push(stats.displayName);
+            });
+
+            const sortedProducts = Object.entries(priceStats)
+                .map(([priceKey, stats]) => {
+                    // Use the actual minimum lowest price for display (same as other reports)
+                    const priceValue = stats.minPrice;
+                    
+                    return {
+                        product: `${t('price')}: ${formatCurrency(priceValue)}`,
+                        revenue: stats.revenue,
+                        count: stats.count,
+                        price: priceValue,
+                        products: stats.products
+                    };
+                })
+                .sort((a, b) => b.revenue - a.revenue); // Sort by revenue descending
+
+            const totalRevenue = sortedProducts.reduce((sum, p) => sum + p.revenue, 0);
+            const totalCount = sortedProducts.reduce((sum, p) => sum + p.count, 0);
+
+            createReportSection(t('revenueByPrice'), sortedProducts, totalRevenue, 'revenue', totalCount, true, true);
+        }
+
+        function generateRevenueByCountryReport() {
+            const countryStats = {};
+            
+            filteredData.forEach(row => {
+                const country = row['Buyer Country'] || 'Unknown';
+                const amount = parseFloat(row['Amount (Merchant Currency)'] || 0);
+                
+                if (!countryStats[country]) {
+                    countryStats[country] = { 
+                        revenue: 0, 
+                        count: 0,
+                        amounts: [] // Store all transaction amounts for median calculation
+                    };
+                }
+                countryStats[country].revenue += amount;
+                countryStats[country].count += 1;
+                countryStats[country].amounts.push(amount);
+            });
+
+            // Helper function to calculate median
+            function calculateMedian(arr) {
+                if (arr.length === 0) return 0;
+                const sorted = [...arr].sort((a, b) => a - b);
+                const mid = Math.floor(sorted.length / 2);
+                return sorted.length % 2 === 0
+                    ? (sorted[mid - 1] + sorted[mid]) / 2
+                    : sorted[mid];
+            }
+
+            const sortedCountries = Object.entries(countryStats)
+                .map(([country, stats]) => ({
+                    product: country,
+                    revenue: stats.revenue,
+                    count: stats.count,
+                    averagePurchase: stats.count > 0 ? stats.revenue / stats.count : 0,
+                    medianPurchase: calculateMedian(stats.amounts)
+                }))
+                .sort((a, b) => b.revenue - a.revenue); // Sort by revenue descending
+
+            const totalRevenue = sortedCountries.reduce((sum, p) => sum + p.revenue, 0);
+            const totalCount = sortedCountries.reduce((sum, p) => sum + p.count, 0);
+
+            createRevenueByCountryReportSection(t('revenueByCountry'), sortedCountries, totalRevenue, totalCount);
+        }
+
+        function createReportSection(title, products, totalRevenue, sortBy, totalCount = null, useRevenueForChart = false, hideProductColumn = false, showNoteColumn = false) {
+            const reportsContainer = document.getElementById('reportsContainer');
+            
+            const section = document.createElement('div');
+            section.className = 'report-section';
+            
+            const titleDiv = document.createElement('h2');
+            titleDiv.className = 'report-title';
+            titleDiv.textContent = title;
+            section.appendChild(titleDiv);
+
+            // Create scrollable wrapper
+            const tableWrapper = document.createElement('div');
+            tableWrapper.className = 'report-table-wrapper';
+
+            // Create table
+            const table = document.createElement('table');
+            table.className = 'report-grid';
+            
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            let headers = hideProductColumn 
+                ? ['price', 'revenue', 'revenuePercentage', 'count', 'countPercentage', 'products']
+                : ['product', 'price', 'revenue', 'revenuePercentage', 'count', 'countPercentage'];
+            
+            // Add Price Range column if needed
+            if (showNoteColumn) {
+                headers.push('priceRange');
+            }
+            
+            headers.forEach(headerKey => {
+                const th = document.createElement('th');
+                th.textContent = t(headerKey);
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            products.forEach(p => {
+                const row = document.createElement('tr');
+                const revenuePct = totalRevenue > 0 ? ((p.revenue / totalRevenue) * 100).toFixed(2) : 0;
+                const countPct = totalCount && totalCount > 0 ? ((p.count / totalCount) * 100).toFixed(2) : 0;
+                
+                // Format price range for Price Range column
+                let priceRangeText = '-';
+                if (p.otherPrices && p.otherPrices.length > 0) {
+                    const allPrices = [p.price, ...p.otherPrices].sort((a, b) => a - b);
+                    const cheapest = allPrices[0];
+                    const highest = allPrices[allPrices.length - 1];
+                    if (cheapest !== highest) {
+                        priceRangeText = `${formatCurrency(cheapest)} ~ ${formatCurrency(highest)}`;
+                    }
+                }
+                
+                if (hideProductColumn) {
+                    // Format products list with reduced font size if there are many
+                    const productsList = p.products || [];
+                    let fontSize = '1em';
+                    if (productsList.length > 10) {
+                        fontSize = '0.75em';
+                    } else if (productsList.length > 5) {
+                        fontSize = '0.85em';
+                    }
+                    const productsText = productsList.length > 0 
+                        ? productsList.join(', ')
+                        : 'N/A';
+                    
+                    let rowHTML = `
+                        <td>${formatCurrency(p.price || (p.revenue / p.count))}</td>
+                        <td>${formatCurrency(p.revenue)}</td>
+                        <td>${revenuePct}%</td>
+                        <td>${p.count}</td>
+                        <td>${countPct}%</td>
+                        <td style="font-size: ${fontSize}; line-height: 1.4;">${productsText}</td>
+                    `;
+                    if (showNoteColumn) {
+                        rowHTML += `<td style="font-size: 0.9em; color: #666;">${priceRangeText}</td>`;
+                    }
+                    row.innerHTML = rowHTML;
+                } else {
+                    let rowHTML = `
+                        <td>${p.product}</td>
+                        <td>${formatCurrency(p.price || (p.revenue / p.count))}</td>
+                        <td>${formatCurrency(p.revenue)}</td>
+                        <td>${revenuePct}%</td>
+                        <td>${p.count}</td>
+                        <td>${countPct}%</td>
+                    `;
+                    if (showNoteColumn) {
+                        rowHTML += `<td style="font-size: 0.9em; color: #666;">${priceRangeText}</td>`;
+                    }
+                    row.innerHTML = rowHTML;
+                }
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            tableWrapper.appendChild(table);
+            section.appendChild(tableWrapper);
+
+            // Create chart
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'chart-container';
+            const canvas = document.createElement('canvas');
+            chartDiv.appendChild(canvas);
+            section.appendChild(chartDiv);
+
+            reportsContainer.appendChild(section);
+
+            // Generate chart
+            const ctx = canvas.getContext('2d');
+            const chartData = useRevenueForChart 
+                ? products.map(p => ({ label: p.product, value: p.revenue }))
+                : products.map(p => ({ label: p.product, value: (p.revenue / totalRevenue) * 100 }));
+
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: chartData.map(d => d.label),
+                    datasets: [{
+                        data: chartData.map(d => d.value),
+                        backgroundColor: generateColors(chartData.length)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 15,
+                                padding: 10
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = useRevenueForChart 
+                                        ? formatCurrency(context.parsed)
+                                        : context.parsed.toFixed(2) + '%';
+                                    return label + ': ' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            charts.push(chart);
+        }
+
+        function createRevenueByCountryReportSection(title, countries, totalRevenue, totalCount) {
+            const reportsContainer = document.getElementById('reportsContainer');
+            
+            const section = document.createElement('div');
+            section.className = 'report-section';
+            
+            const titleDiv = document.createElement('h2');
+            titleDiv.className = 'report-title';
+            titleDiv.textContent = title;
+            section.appendChild(titleDiv);
+
+            // Create scrollable wrapper
+            const tableWrapper = document.createElement('div');
+            tableWrapper.className = 'report-table-wrapper';
+
+            // Create table
+            const table = document.createElement('table');
+            table.className = 'report-grid';
+            
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headers = ['product', 'revenue', 'revenuePercentage', 'count', 'countPercentage', 'averagePurchase', 'medianPurchase'];
+            
+            headers.forEach(headerKey => {
+                const th = document.createElement('th');
+                th.textContent = t(headerKey);
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            countries.forEach(c => {
+                const row = document.createElement('tr');
+                const revenuePct = totalRevenue > 0 ? ((c.revenue / totalRevenue) * 100).toFixed(2) : 0;
+                const countPct = totalCount && totalCount > 0 ? ((c.count / totalCount) * 100).toFixed(2) : 0;
+                
+                row.innerHTML = `
+                    <td>${c.product}</td>
+                    <td>${formatCurrency(c.revenue)}</td>
+                    <td>${revenuePct}%</td>
+                    <td>${c.count}</td>
+                    <td>${countPct}%</td>
+                    <td>${formatCurrency(c.averagePurchase)}</td>
+                    <td>${formatCurrency(c.medianPurchase)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            tableWrapper.appendChild(table);
+            section.appendChild(tableWrapper);
+
+            // Create chart
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'chart-container';
+            const canvas = document.createElement('canvas');
+            chartDiv.appendChild(canvas);
+            section.appendChild(chartDiv);
+
+            reportsContainer.appendChild(section);
+
+            // Generate chart based on revenue percentage
+            const ctx = canvas.getContext('2d');
+            const chartData = countries.map(c => ({
+                label: c.product,
+                value: totalRevenue > 0 ? (c.revenue / totalRevenue) * 100 : 0
+            }));
+
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: chartData.map(d => d.label),
+                    datasets: [{
+                        data: chartData.map(d => d.value),
+                        backgroundColor: generateColors(chartData.length)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 15,
+                                padding: 10
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed.toFixed(2) + '%';
+                                    return label + ': ' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            charts.push(chart);
+        }
+
+        function convertToDisplayCurrency(amount) {
+            const displayCurrency = document.querySelector('input[name="currency"]:checked').value;
+            
+            // If displaying in USD and original currency is JPY, convert
+            if (displayCurrency === 'USD' && merchantCurrency === 'JPY') {
+                return amount * conversionRate;
+            }
+            
+            // If displaying in JPY and original currency is USD, convert back
+            if (displayCurrency === 'JPY' && merchantCurrency === 'USD') {
+                return amount / conversionRate;
+            }
+            
+            // Same currency, no conversion needed
+            return amount;
+        }
+
+        function formatCurrency(amount) {
+            const displayCurrency = document.querySelector('input[name="currency"]:checked').value;
+            const convertedAmount = convertToDisplayCurrency(amount);
+            
+            try {
+                if (displayCurrency === 'JPY') {
+                    // JPY: no decimal places
+                    return new Intl.NumberFormat('ja-JP', {
+                        style: 'currency',
+                        currency: 'JPY',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    }).format(convertedAmount);
+                } else {
+                    // USD: with decimal places
+                    return new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }).format(convertedAmount);
+                }
+            } catch (e) {
+                // Fallback formatting
+                if (displayCurrency === 'JPY') {
+                    return '¥' + Math.round(convertedAmount).toLocaleString();
+                } else {
+                    return '$' + convertedAmount.toFixed(2);
+                }
+            }
+        }
+
+        function generateColors(count) {
+            const colors = [];
+            const hueStep = 360 / count;
+            for (let i = 0; i < count; i++) {
+                const hue = i * hueStep;
+                colors.push(`hsl(${hue}, 70%, 60%)`);
+            }
+            return colors;
+        }
+
+        function saveSettings() {
+            const settings = {
+                packageID: document.getElementById('packageSelect').value,
+                country: document.getElementById('countrySelect').value,
+                currency: document.querySelector('input[name="currency"]:checked').value,
+                topRevenue: document.getElementById('topRevenue').checked,
+                topBought: document.getElementById('topBought').checked,
+                revenueByPrice: document.getElementById('revenueByPrice').checked,
+                revenueByCountry: document.getElementById('revenueByCountry').checked,
+                language: currentLanguage,
+                productDefinition: document.getElementById('productDefinition').value
+            };
+            
+            // Save to localStorage
+            try {
+                localStorage.setItem('playStoreIAPReporterSettings', JSON.stringify(settings));
+            } catch (e) {
+                console.warn('Could not save settings to localStorage:', e);
+            }
+        }
+
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem('playStoreIAPReporterSettings');
+                if (saved) {
+                    const settings = JSON.parse(saved);
+                    
+                    // Load package ID (only if dropdown is already populated)
+                    if (settings.packageID) {
+                        const select = document.getElementById('packageSelect');
+                        // Check if the option exists
+                        const optionExists = Array.from(select.options).some(opt => opt.value === settings.packageID);
+                        if (optionExists) {
+                            select.value = settings.packageID;
+                        }
+                    }
+                    
+                    // Load country (only if dropdown is already populated)
+                    if (settings.country) {
+                        const select = document.getElementById('countrySelect');
+                        // Check if the option exists
+                        const optionExists = Array.from(select.options).some(opt => opt.value === settings.country);
+                        if (optionExists) {
+                            select.value = settings.country;
+                        }
+                    }
+                    
+                    // Load currency
+                    if (settings.currency) {
+                        const currencyRadio = document.getElementById(`currency${settings.currency}`);
+                        if (currencyRadio) {
+                            currencyRadio.checked = true;
+                        }
+                    }
+                    
+                    // Load report checkboxes
+                    if (settings.topRevenue !== undefined) {
+                        document.getElementById('topRevenue').checked = settings.topRevenue;
+                    }
+                    if (settings.topBought !== undefined) {
+                        document.getElementById('topBought').checked = settings.topBought;
+                    }
+                    if (settings.revenueByPrice !== undefined) {
+                        document.getElementById('revenueByPrice').checked = settings.revenueByPrice;
+                    }
+                    if (settings.revenueByCountry !== undefined) {
+                        document.getElementById('revenueByCountry').checked = settings.revenueByCountry;
+                    }
+                    
+                    // Initialize Revenue by Country checkbox state based on country filter
+                    const countrySelect = document.getElementById('countrySelect');
+                    const revenueByCountryCheckbox = document.getElementById('revenueByCountry');
+                    const revenueByCountryLabel = revenueByCountryCheckbox.nextElementSibling;
+                    if (countrySelect.value !== '') {
+                        // Specific country selected - disable and uncheck
+                        revenueByCountryCheckbox.disabled = true;
+                        revenueByCountryCheckbox.checked = false;
+                        revenueByCountryLabel.style.opacity = '0.5';
+                        revenueByCountryLabel.style.cursor = 'not-allowed';
+                    } else {
+                        // All countries selected - enable the checkbox
+                        revenueByCountryCheckbox.disabled = false;
+                        revenueByCountryLabel.style.opacity = '1';
+                        revenueByCountryLabel.style.cursor = 'pointer';
+                    }
+                    
+                    // Load language preference
+                    if (settings.language) {
+                        currentLanguage = settings.language;
+                        document.getElementById('languageSelect').value = settings.language;
+                        applyTranslations();
+                    }
+                    
+                    // Load product definition
+                    if (settings.productDefinition) {
+                        document.getElementById('productDefinition').value = settings.productDefinition;
+                    }
+                    
+                    // Re-apply translations after loading settings to ensure options are translated
+                    applyTranslations();
+                }
+            } catch (e) {
+                console.warn('Could not load settings from localStorage:', e);
+            }
+        }
+
+        function exportSettings() {
+            const settings = {
+                packageID: document.getElementById('packageSelect').value,
+                currency: document.querySelector('input[name="currency"]:checked').value,
+                topRevenue: document.getElementById('topRevenue').checked,
+                topBought: document.getElementById('topBought').checked,
+                revenueByPrice: document.getElementById('revenueByPrice').checked
+            };
+            
+            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'save.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importSettings(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const settings = JSON.parse(e.target.result);
+                    
+                    // Load package ID
+                    if (settings.packageID) {
+                        const select = document.getElementById('packageSelect');
+                        select.value = settings.packageID;
+                    }
+                    
+                    // Load currency
+                    if (settings.currency) {
+                        const currencyRadio = document.getElementById(`currency${settings.currency}`);
+                        if (currencyRadio) {
+                            currencyRadio.checked = true;
+                        }
+                    }
+                    
+                    // Load report checkboxes
+                    if (settings.topRevenue !== undefined) {
+                        document.getElementById('topRevenue').checked = settings.topRevenue;
+                    }
+                    if (settings.topBought !== undefined) {
+                        document.getElementById('topBought').checked = settings.topBought;
+                    }
+                    if (settings.revenueByPrice !== undefined) {
+                        document.getElementById('revenueByPrice').checked = settings.revenueByPrice;
+                    }
+                    
+                    // Save to localStorage
+                    saveSettings();
+                    
+                    showSuccess('settingsImported');
+                    
+                    // Regenerate report if data is loaded
+                    if (csvData.length > 0 && document.getElementById('reportsContainer').classList.contains('hidden') === false) {
+                        generateReport();
+                    }
+                } catch (error) {
+                    showError('Failed to import settings: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            event.target.value = '';
+        }
+
+        function clearSavedData() {
+            if (confirm(t('confirmClear'))) {
+                localStorage.removeItem('playStoreIAPReporterSettings');
+                localStorage.removeItem('playStoreIAPReporterFileContent');
+                localStorage.removeItem('playStoreIAPReporterFileName');
+                
+                // Clear UI
+                csvData = [];
+                filteredData = [];
+                document.getElementById('packageSelect').innerHTML = '<option value="">All Packages</option>';
+                document.getElementById('fileInfo').classList.add('hidden');
+                
+                // Reset to defaults
+                document.getElementById('currencyJPY').checked = true;
+                document.getElementById('topRevenue').checked = true;
+                document.getElementById('topBought').checked = true;
+                document.getElementById('revenueByPrice').checked = true;
+                
+                    showSuccess('dataCleared');
+            }
+        }
+
+        async function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const container = document.getElementById('reportsContainer');
+
+            const canvas = await html2canvas(container, {
+                scale: 2,
+                useCORS: true,
+                logging: false
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = 210; // A4 width in mm
+            const pageHeight = 297; // A4 height in mm
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            let heightLeft = imgHeight;
+
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+
+            pdf.save('play-store-iap-report.pdf');
+        }
+    </script>
+</body>
+</html>
+

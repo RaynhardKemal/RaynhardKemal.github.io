@@ -1,0 +1,49 @@
+Key,EN,JP
+appTitle,Google Play Console IAP Report Generator,Google Play Console IAPレポート生成ツール
+selectFile,Select File (CSV or ZIP),ファイルを選択 (CSVまたはZIP)
+filterPackageID,Filter PackageID:,パッケージIDでフィルター:
+allPackages,All Packages,すべてのパッケージ
+filterCountry,Filter Country:,国でフィルター:
+allCountries,All Countries,すべての国
+displayCurrency,Display Currency:,表示通貨:
+currencyJPY,JPY (Yen),JPY (円)
+currencyUSD,USD (Dollar),USD (ドル)
+topRevenue,Top Revenue Products,収益トップ製品
+topBought,Top Bought Products,購入数トップ製品
+revenueByPrice,Revenue by Price,価格別収益
+revenueByCountry,Revenue by Country,国別収益
+createReport,Create Report,レポートを作成
+exportSettings,Export Settings,設定をエクスポート
+importSettings,Import Settings,設定をインポート
+clearSavedData,Clear Saved Data,保存データをクリア
+fileLoaded,File loaded:,ファイル読み込み:
+transactions,transactions,トランザクション
+autoLoaded,[Auto-loaded],[自動読み込み]
+exportPDF,Export as PDF,PDFとしてエクスポート
+print,Print,印刷
+product,Product,製品
+price,Price,価格
+revenue,Revenue,収益
+revenuePercentage,Revenue Percentage,収益割合
+count,Count,購入数
+countPercentage,Count Percentage,購入数割合
+products,Products,製品一覧
+pleaseSelectFile,Please select a CSV or ZIP file first,まずCSVまたはZIPファイルを選択してください
+noValidData,No valid transaction data found,有効なトランザクションデータが見つかりません
+reportGenerated,Report generated successfully,レポートが正常に生成されました
+fileLoadSuccess,File loaded successfully,ファイルが正常に読み込まれました
+errorLoadingFile,Error loading file:,ファイルの読み込みエラー:
+noDataFound,No data found in CSV file,CSVファイルにデータが見つかりません
+noCSVInZip,No CSV file found in ZIP archive,ZIPアーカイブにCSVファイルが見つかりません
+settingsImported,Settings imported successfully,設定が正常にインポートされました
+settingsExported,Settings exported successfully,設定が正常にエクスポートされました
+dataCleared,Saved data cleared successfully,保存データが正常にクリアされました
+confirmClear,Are you sure you want to clear all saved data? This will remove the saved file and settings.,保存されたすべてのデータをクリアしてもよろしいですか？これにより、保存されたファイルと設定が削除されます。
+productDefinition,Product Definition:,製品定義:
+skuId,Sku Id,Sku ID
+productTitle,Product Title,製品タイトル
+priceRange,Price Range,価格範囲
+averagePurchase,Average Purchase,平均購入額
+medianPurchase,Median Purchase,中央値購入額
+totalPurchaseCount,Total Purchase Count,総購入数
+
